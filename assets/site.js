@@ -168,10 +168,46 @@
     }), { rootMargin: '0px 0px -8% 0px' }) : null;
     $$('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('in'));
 
-    $$('img').forEach(img => img.addEventListener('error', () => {
+    const useFallback = img => {
         if (img.dataset.fallback && img.src.indexOf(img.dataset.fallback) === -1) img.src = img.dataset.fallback;
         else img.classList.add('broken');
-    }));
+    };
+    $$('img').forEach(img => {
+        img.addEventListener('error', () => useFallback(img));
+        if (img.complete && img.naturalWidth === 0 && img.getAttribute('loading') !== 'lazy') useFallback(img);
+    });
+
+    // ---------- 3D tilt + glare on cards and tiles (mouse only) ----------
+    const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (finePointer && !calm) {
+        $$('.card-media, .tilt').forEach(el => {
+            const glare = document.createElement('span'); glare.className = 'glare'; el.appendChild(glare);
+            const host = el.closest('.card') || el;
+            host.addEventListener('pointermove', e => {
+                const r = el.getBoundingClientRect();
+                const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+                el.style.transition = 'transform .12s ease-out';
+                el.style.transform = `rotateX(${(.5 - y) * 10}deg) rotateY(${(x - .5) * 12}deg) translateZ(10px)`;
+                el.style.setProperty('--gx', x * 100 + '%'); el.style.setProperty('--gy', y * 100 + '%');
+            });
+            host.addEventListener('pointerleave', () => { el.style.transition = ''; el.style.transform = ''; });
+        });
+
+        // custom cursor
+        const cur = $('.cursor');
+        if (cur) {
+            let cx = innerWidth / 2, cy = innerHeight / 2, tx = cx, ty = cy;
+            addEventListener('pointermove', e => { tx = e.clientX; ty = e.clientY; cur.classList.add('on'); });
+            document.addEventListener('pointerleave', () => cur.classList.remove('on'));
+            document.addEventListener('pointerover', e => cur.classList.toggle('big', !!e.target.closest('a, button, .card, .fan-card, select, input, .size')));
+            (function move() {
+                cx += (tx - cx) * .22; cy += (ty - cy) * .22;
+                cur.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+                requestAnimationFrame(move);
+            })();
+        }
+    }
 
     renderBag();
 })();

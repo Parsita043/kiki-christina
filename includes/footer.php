@@ -36,6 +36,10 @@
 </footer>
 
 <div class="toast" data-toast></div>
+<div class="cursor" aria-hidden="true"></div>
 <script src="assets/site.js"></script>
+<?php foreach ($extraScripts ?? [] as $src): ?>
+<script src="<?= e($src) ?>"></script>
+<?php endforeach; ?>
 </body>
 </html>
