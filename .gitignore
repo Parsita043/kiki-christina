@@ -1,0 +1,4 @@
+data/
+*.sqlite
+*.tar.gz
+*.sql.gz
