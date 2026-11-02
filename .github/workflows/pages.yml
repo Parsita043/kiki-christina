@@ -1,0 +1,49 @@
+name: Deploy static demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite
+      - name: Render PHP pages to static HTML
+        run: |
+          php -S 127.0.0.1:8000 > /dev/null 2>&1 &
+          sleep 2
+          mkdir -p _site
+          cp -r assets *.jpg _site/
+          for p in index shop bespoke sizeguide; do curl -sf "http://127.0.0.1:8000/$p.php" > "_site/$p.html"; done
+          curl -sf "http://127.0.0.1:8000/product.php?id=velvet-gown" > _site/product.html
+          cd _site
+          sed -i -E 's/href="(index|shop|bespoke|sizeguide)\.php/href="\1.html/g; s/href="product\.php\?id=[^"]*"/href="product.html"/g; s/href="(account|logout)\.php"/href="#"/g' *.html
+          sed -i 's/shop\.php/shop.html/g' assets/site.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
